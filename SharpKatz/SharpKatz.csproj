@@ -65,13 +65,16 @@
     <Compile Include="Module\CredMan.cs" />
     <Compile Include="Module\DCSync.cs" />
     <Compile Include="Module\LogonSessions.cs" />
+    <Compile Include="Module\Pth.cs" />
     <Compile Include="Module\Tspkg.cs" />
     <Compile Include="Module\Kerberos.cs" />
     <Compile Include="Module\Ssp.cs" />
+    <Compile Include="Module\Zerologon.cs" />
     <Compile Include="WinBuild\IWinBuild.cs" />
     <Compile Include="WinBuild\WinBuild1607.cs" />
     <Compile Include="WinBuild\WinBuild1511.cs" />
     <Compile Include="WinBuild\WinBuild1703.cs" />
+    <Compile Include="WinBuild\WinBuild1809.cs" />
     <Compile Include="WinBuild\WinBuild2004.cs" />
     <Compile Include="WinBuild\WinBuild1903.cs" />
     <Compile Include="WinBuild\WinBuild1803.cs" />

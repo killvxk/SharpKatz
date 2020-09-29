@@ -51,7 +51,11 @@ namespace SharpKatz.Win32
                 hModule = LoadModuleFromDisk(DLLName);
                 if (hModule == IntPtr.Zero)
                 {
-                    throw new FileNotFoundException(DLLName + ", unable to find the specified file.");
+                    hModule = LoadModuleFromDisk(@"C:\Windows\System32\" + DLLName);
+                    if (hModule == IntPtr.Zero)
+                    {
+                        throw new FileNotFoundException(DLLName + ", unable to find the specified file.");
+                    }
                 }
             }
             else if (hModule == IntPtr.Zero)
@@ -100,7 +104,7 @@ namespace SharpKatz.Win32
             ProcessModuleCollection ProcModules = Process.GetCurrentProcess().Modules;
             foreach (ProcessModule Mod in ProcModules)
             {
-                if (Mod.FileName.ToLower().EndsWith(DLLName.ToLower()))
+                if (Mod.FileName.EndsWith(DLLName, StringComparison.OrdinalIgnoreCase))
                 {
                     return Mod.BaseAddress;
                 }
@@ -108,6 +112,7 @@ namespace SharpKatz.Win32
 
             return IntPtr.Zero;
         }
+
         /// <summary>
         /// Given a module base address, resolve the address of a function by manually walking the module export table.
         /// </summary>

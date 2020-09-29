@@ -226,6 +226,78 @@ namespace SharpKatz.Win32
         }
 
         [Flags]
+        public enum CreationFlags
+        {
+            CREATE_SUSPENDED = 0x00000004,
+            DETACHED_PROCESS = 0x00000008,
+            CREATE_NEW_CONSOLE = 0x00000010,
+            CREATE_NEW_PROCESS_GROUP = 0x00000200,
+            CREATE_UNICODE_ENVIRONMENT = 0x00000400,
+            CREATE_SEPARATE_WOW_VDM = 0x00000800,
+            CREATE_DEFAULT_ERROR_MODE = 0x04000000,
+            EXTENDED_STARTUPINFO_PRESENT = 0x00080000,
+            CREATE_NO_WINDOW = 0x08000000
+        }
+
+        public enum LogonFlags
+        {
+            WithProfile = 1,
+            NetCredentialsOnly
+        }
+
+        public enum TOKEN_TYPE
+        {
+            TokenPrimary = 1,
+            TokenImpersonation
+        }
+
+        public enum SECURITY_IMPERSONATION_LEVEL
+        {
+            SecurityAnonymous,
+            SecurityIdentification,
+            SecurityImpersonation,
+            SecurityDelegation
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct STARTUPINFO
+        {
+            public uint cb;
+            public IntPtr lpReserved;
+            public string lpDesktop;
+            public IntPtr lpTitle;
+            public uint dwX;
+            public uint dwY;
+            public uint dwXSize;
+            public uint dwYSize;
+            public uint dwXCountChars;
+            public uint dwYCountChars;
+            public uint dwFillAttributes;
+            public uint dwFlags;
+            public ushort wShowWindow;
+            public ushort cbReserved;
+            public IntPtr lpReserved2;
+            public IntPtr hStdInput;
+            public IntPtr hStdOutput;
+            public IntPtr hStdErr;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct TOKEN_STATISTICS
+        {
+            LUID TokenId;
+            public LUID AuthenticationId;
+            LARGE_INTEGER ExpirationTime;
+            TOKEN_TYPE TokenType;
+            SECURITY_IMPERSONATION_LEVEL ImpersonationLevel;
+            uint DynamicCharged;
+            uint DynamicAvailable;
+            uint GroupCount;
+            uint PrivilegeCount;
+            LUID ModifiedId;
+        }
+
+        [Flags]
         public enum ProcessAccessFlags : uint
         {
             All = 0x001F0FFF,
@@ -241,6 +313,23 @@ namespace SharpKatz.Win32
             QueryInformation = 0x00000400,
             QueryLimitedInformation = 0x00001000,
             Synchronize = 0x00100000
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct PROCESS_INFORMATION
+        {
+            public IntPtr hProcess;
+            public IntPtr hThread;
+            public int dwProcessId;
+            public int dwThreadId;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct SECURITY_ATTRIBUTES
+        {
+            public int nLength;
+            public IntPtr lpSecurityDescriptor;
+            public bool bInheritHandle;
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 0)]
@@ -266,6 +355,64 @@ namespace SharpKatz.Win32
             public IntPtr SecurityDescriptor;
             public IntPtr SecurityQualityOfService;
         }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct OBJECT_BASIC_INFORMATION
+        {
+            uint Attributes;
+            ACCESS_MASK GrantedAccess;
+            uint HandleCount;
+            uint PointerCount;
+            uint PagedPoolCharge;
+            uint NonPagedPoolCharge;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
+            uint[] Reserved;
+            uint NameInfoSize;
+            uint TypeInfoSize;
+            uint SecurityDescriptorSize;
+            LARGE_INTEGER CreationTime;
+        }
+
+        [Flags]
+        public enum ACCESS_MASK : uint
+        {
+            DELETE = 0x00010000,
+            READ_CONTROL = 0x00020000,
+            WRITE_DAC = 0x00040000,
+            WRITE_OWNER = 0x00080000,
+            SYNCHRONIZE = 0x00100000,
+            STANDARD_RIGHTS_REQUIRED = 0x000F0000,
+            STANDARD_RIGHTS_READ = 0x00020000,
+            STANDARD_RIGHTS_WRITE = 0x00020000,
+            STANDARD_RIGHTS_EXECUTE = 0x00020000,
+            STANDARD_RIGHTS_ALL = 0x001F0000,
+            SPECIFIC_RIGHTS_ALL = 0x0000FFF,
+            ACCESS_SYSTEM_SECURITY = 0x01000000,
+            MAXIMUM_ALLOWED = 0x02000000,
+            GENERIC_READ = 0x80000000,
+            GENERIC_WRITE = 0x40000000,
+            GENERIC_EXECUTE = 0x20000000,
+            GENERIC_ALL = 0x10000000,
+            DESKTOP_READOBJECTS = 0x00000001,
+            DESKTOP_CREATEWINDOW = 0x00000002,
+            DESKTOP_CREATEMENU = 0x00000004,
+            DESKTOP_HOOKCONTROL = 0x00000008,
+            DESKTOP_JOURNALRECORD = 0x00000010,
+            DESKTOP_JOURNALPLAYBACK = 0x00000020,
+            DESKTOP_ENUMERATE = 0x00000040,
+            DESKTOP_WRITEOBJECTS = 0x00000080,
+            DESKTOP_SWITCHDESKTOP = 0x00000100,
+            WINSTA_ENUMDESKTOPS = 0x00000001,
+            WINSTA_READATTRIBUTES = 0x00000002,
+            WINSTA_ACCESSCLIPBOARD = 0x00000004,
+            WINSTA_CREATEDESKTOP = 0x00000008,
+            WINSTA_WRITEATTRIBUTES = 0x00000010,
+            WINSTA_ACCESSGLOBALATOMS = 0x00000020,
+            WINSTA_EXITWINDOWS = 0x00000040,
+            WINSTA_ENUMERATE = 0x00000100,
+            WINSTA_READSCREEN = 0x00000200,
+            WINSTA_ALL_ACCESS = 0x0000037F
+        };
 
         public enum NTSTATUS : uint
         {
@@ -309,6 +456,7 @@ namespace SharpKatz.Win32
             ProcessNotInJob = 0x00000123,
             ProcessInJob = 0x00000124,
             ProcessCloned = 0x00000129,
+            ProcessIsTerminating = 0xC000010A,
             FileLockedWithOnlyReaders = 0x0000012a,
             FileLockedWithWriters = 0x0000012b,
 
@@ -871,6 +1019,9 @@ namespace SharpKatz.Win32
             }
         }
 
+        public static int LOGON32_LOGON_NEW_CREDENTIALS = 9;
+        public static int LOGON32_PROVIDER_WINNT50 = 3;
+
         /// <summary>
         /// x64
         /// </summary>
@@ -1181,6 +1332,63 @@ namespace SharpKatz.Win32
             public IntPtr elements;//Byte *
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        public struct QUOTA_LIMITS {
+            UInt64 PagedPoolLimit;
+            UInt64 NonPagedPoolLimit;
+            UInt64 MinimumWorkingSetSize;
+            UInt64 MaximumWorkingSetSize;
+            UInt64 PagefileLimit;
+            LARGE_INTEGER TimeLimit;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct TOKEN_SOURCE
+        {
+            private const int TOKEN_SOURCE_LENGTH = 8;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = TOKEN_SOURCE_LENGTH)]
+            public byte[] Name;
+            public LUID SourceIdentifier;
+        }
+
+        public  enum MSV1_0_LOGON_SUBMIT_TYPE
+        {
+            MsV1_0InteractiveLogon = 2,
+            MsV1_0Lm20Logon,
+            MsV1_0NetworkLogon,
+            MsV1_0SubAuthLogon,
+            MsV1_0WorkstationUnlockLogon,
+            MsV1_0S4ULogon,
+            MsV1_0VirtualLogon,
+            MsV1_0NoElevationLogon,
+            MsV1_0LuidLogon
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MSV1_0_INTERACTIVE_LOGON {
+            public MSV1_0_LOGON_SUBMIT_TYPE MessageType;
+            public UNICODE_STRING LogonDomainName;
+            public UNICODE_STRING UserName;
+            public UNICODE_STRING Password;
+        }
+
+        public enum SECURITY_LOGON_TYPE
+        {
+            UndefinedLogonType = 1,
+            Interactive,
+            Network,
+            Batch,
+            Service,
+            Proxy,
+            Unlock,
+            NetworkCleartext,
+            NewCredentials,
+            RemoteInteractive,
+            CachedInteractive,
+            CachedRemoteInteractive,
+            CachedUnlock
+        }
+
         //DCSync author LE TOUX (vincent.letoux@mysmartlogon.com)
         //https://raw.githubusercontent.com/vletoux/MakeMeEnterpriseAdmin/master/MakeMeEnterpriseAdmin.ps1
         [StructLayout(LayoutKind.Sequential)]
@@ -1215,7 +1423,7 @@ namespace SharpKatz.Win32
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        private struct GENERIC_BINDING_ROUTINE_PAIR
+        public struct GENERIC_BINDING_ROUTINE_PAIR
         {
             public IntPtr Bind;
             public IntPtr Unbind;
@@ -1278,6 +1486,81 @@ namespace SharpKatz.Win32
             public IntPtr ProxyServerInfo;
             public IntPtr /*NDR_EXPR_DESC*/ pExprInfo;
             // Fields up to now present in win2000 release.
+        }
+
+        public enum NETLOGON_SECURE_CHANNEL_TYPE
+        {
+            NullSecureChannel = 0,
+            MsvApSecureChannel = 1,
+            WorkstationSecureChannel = 2,
+            TrustedDnsDomainSecureChannel = 3,
+            TrustedDomainSecureChannel = 4,
+            UasServerSecureChannel = 5,
+            ServerSecureChannel = 6,
+            CdcServerSecureChannel = 7
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NETLOGON_AUTHENTICATOR
+        {
+            public NETLOGON_CREDENTIAL Credential;
+            public uint Timestamp;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NETLOGON_CREDENTIAL
+        {
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+            public byte[] data;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NL_TRUST_PASSWORD
+        {
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 512)]
+            public byte[] Buffer;
+            public uint Length;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct SEC_WINNT_AUTH_IDENTITY_W
+        {
+            public string User;
+            public int UserLength;
+            public string Domain;
+            public int DomainLength;
+            public string Password;
+            public int PasswordLength;
+            public int Flags; //2 Uni
+        }
+
+        /*[StructLayout(LayoutKind.Sequential)]
+        public struct RPC_CLIENT_INTERFACE
+        {
+            uint Length;
+            RPC_SYNTAX_IDENTIFIER InterfaceId;
+            RPC_SYNTAX_IDENTIFIER TransferSyntax;
+            RPC_DISPATCH_TABLE DispatchTable; //RPC_DISPATCH_TABLE
+            uint RpcProtseqEndpointCount;
+            IntPtr RpcProtseqEndpoint;//RPC_PROTSEQ_ENDPOINT
+            uint Reserved;
+            IntPtr InterpreterInfo;
+            uint Flags;
+        }*/
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RPC_DISPATCH_TABLE
+        {
+            uint DispatchTableCount;
+            IntPtr DispatchTable;//RPC_DISPATCH_FUNCTION
+            int Reserved;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RPC_PROTSEQ_ENDPOINT
+        {
+            IntPtr RpcProtocolSequence;
+            IntPtr Endpoint;
         }
 
         #region RPC structures
@@ -1621,7 +1904,7 @@ namespace SharpKatz.Win32
         public static int NtFilterToken(IntPtr TokenHandle, uint Flags, IntPtr SidsToDisable, IntPtr PrivilegesToDelete, IntPtr RestrictedSids, ref IntPtr hToken)
         {
             IntPtr proc = GetProcAddress(GetNtDll(), "NtFilterToken");
-            SysCall.Delegates.NtFilterToken NtSetInformationToken = (SysCall.Delegates.NtFilterToken)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.NtFilterToken));
+            SysCall.Delegates.NtFilterToken NtFilterToken = (SysCall.Delegates.NtFilterToken)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.NtFilterToken));
             return NtFilterToken(TokenHandle, Flags, SidsToDisable, PrivilegesToDelete, RestrictedSids, ref hToken);
         }
 
@@ -1672,6 +1955,13 @@ namespace SharpKatz.Win32
             IntPtr proc = GetProcAddress(GetNtDll(), "RtlInitUnicodeString");
             SysCall.Delegates.RtlInitUnicodeString RtlInitUnicodeString = (SysCall.Delegates.RtlInitUnicodeString)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.RtlInitUnicodeString));
             RtlInitUnicodeString(ref DestinationString, SourceString);
+        }
+
+        public static void RtlInitString(ref Natives.UNICODE_STRING DestinationString, [MarshalAs(UnmanagedType.LPStr)] string SourceString)
+        {
+            IntPtr proc = GetProcAddress(GetNtDll(), "RtlInitString");
+            SysCall.Delegates.RtlInitString RtlInitString = (SysCall.Delegates.RtlInitString)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.RtlInitString));
+            RtlInitString(ref DestinationString, SourceString);
         }
 
         public static bool GetTokenInformation(IntPtr TokenHandle, TOKEN_INFORMATION_CLASS TokenInformationClass, IntPtr TokenInformation, UInt32 TokenInformationLength, out UInt32 ReturnLength)
@@ -1798,6 +2088,12 @@ namespace SharpKatz.Win32
             return RpcBindingSetOption(Binding, Option, OptionValue);
         }
 
+        public static int RpcEpResolveBinding(IntPtr Binding, IntPtr IfSpec)
+        {
+            IntPtr proc = GetProcAddress(GetRpcrt4(), "RpcEpResolveBinding");
+            SysCall.Delegates.RpcEpResolveBinding RpcEpResolveBinding = (SysCall.Delegates.RpcEpResolveBinding)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.RpcEpResolveBinding));
+            return RpcEpResolveBinding(Binding, IfSpec);
+        }
 
         public static int RtlDecryptDES2blocks1DWORD(byte[] data, ref UInt32 key, IntPtr output)
         {
@@ -1839,9 +2135,9 @@ namespace SharpKatz.Win32
             return CustomLoadLibrary.GetExportAddress(hModule, procName);
         }
 
-        public static IntPtr LoadLibrary(string name, bool conloadfromdisk = true)
+        public static IntPtr LoadLibrary(string name, bool canloadfromdisk = true)
         {
-            return CustomLoadLibrary.GetDllAddress(name, conloadfromdisk);
+            return CustomLoadLibrary.GetDllAddress(name, canloadfromdisk);
         }
 
         public static int BCryptCloseAlgorithmProvider(IntPtr hAlgorithm, int flags)
@@ -1884,6 +2180,13 @@ namespace SharpKatz.Win32
             IntPtr proc = GetProcAddress(GetBcrypt(), "BCryptDecrypt");
             SysCall.Delegates.BCryptDecrypt BCryptDecrypt = (SysCall.Delegates.BCryptDecrypt)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.BCryptDecrypt));
             return BCryptDecrypt(hKey, pbInput, cbInput, pPaddingInfo, pbIV, cbIV, pbOutput, cbOutput, out pcbResult, dwFlags);
+        }
+
+        public static int BCryptEncrypt(SafeBCryptKeyHandle hKey, IntPtr pbInput, int cbInput, IntPtr pPaddingInfo, IntPtr pbIV, int cbIV, IntPtr pbOutput, int cbOutput, out int pcbResult, int dwFlags)
+        {
+            IntPtr proc = GetProcAddress(GetBcrypt(), "BCryptEncrypt");
+            SysCall.Delegates.BCryptEncrypt BCryptEncrypt = (SysCall.Delegates.BCryptEncrypt)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.BCryptEncrypt));
+            return BCryptEncrypt(hKey, pbInput, cbInput, pPaddingInfo, pbIV, cbIV, pbOutput, cbOutput, out pcbResult, dwFlags);
         }
 
         public static IntPtr ASN1_CreateModule(uint nVersion, uint eRule, uint dwFlags, uint cPDU, IntPtr[] apfnEncoder, IntPtr[] apfnDecoder, IntPtr[] apfnFreeMemory, int[] acbStructSize, uint nModuleName)
@@ -1941,5 +2244,88 @@ namespace SharpKatz.Win32
             SysCall.Delegates.ASN1_CloseModule ASN1_CloseModule = (SysCall.Delegates.ASN1_CloseModule)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.ASN1_CloseModule));
             ASN1_CloseModule( pModule);
         }
+
+        public static bool CreateProcessWithLogonW(string userName,string domain,string password,LogonFlags dwLogonFlags,string applicationName,string commandLine, CreationFlags dwCreationFlags, uint environment,string currentDirectory,ref STARTUPINFO startupInfo, out PROCESS_INFORMATION processInformation)
+        {
+            IntPtr proc = GetProcAddress(GetAdvapi32(), "CreateProcessWithLogonW");
+            SysCall.Delegates.CreateProcessWithLogonW CreateProcessWithLogonW = (SysCall.Delegates.CreateProcessWithLogonW)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.CreateProcessWithLogonW));
+            return CreateProcessWithLogonW(userName,domain,password,dwLogonFlags,applicationName,commandLine,dwCreationFlags,environment,currentDirectory,ref startupInfo,out processInformation);
+        }
+
+        public static bool DuplicateTokenEx(IntPtr hExistingToken, uint dwDesiredAccess, ref SECURITY_ATTRIBUTES lpTokenAttributes, int ImpersonationLevel, int TokenType, ref IntPtr phNewToken)
+        {
+            IntPtr proc = GetProcAddress(GetKernelbase(), "DuplicateTokenEx");
+            SysCall.Delegates.DuplicateTokenEx DuplicateTokenEx = (SysCall.Delegates.DuplicateTokenEx)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.DuplicateTokenEx));
+            return DuplicateTokenEx(hExistingToken, dwDesiredAccess, ref lpTokenAttributes, ImpersonationLevel, TokenType, ref phNewToken);
+        }
+
+        public static bool SetThreadToken(IntPtr pHandle, IntPtr hToken)
+        {
+            IntPtr proc = GetProcAddress(GetAdvapi32(), "SetThreadToken");
+            SysCall.Delegates.SetThreadToken SetThreadToken = (SysCall.Delegates.SetThreadToken)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.SetThreadToken));
+            return SetThreadToken(pHandle, hToken);
+        }
+
+        public static void NtResumeProcess(IntPtr hProcess)
+        {
+            IntPtr proc = GetProcAddress(GetNtDll(), "NtResumeProcess");
+            SysCall.Delegates.NtResumeProcess NtResumeProcess = (SysCall.Delegates.NtResumeProcess)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.NtResumeProcess));
+            NtResumeProcess(hProcess);
+        }
+
+        public static uint NtTerminateProcess(IntPtr hProcess, uint uExitCode)
+        {
+            IntPtr proc = GetProcAddress(GetNtDll(), "NtTerminateProcess");
+            SysCall.Delegates.NtTerminateProcess NtTerminateProcess = (SysCall.Delegates.NtTerminateProcess)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.NtTerminateProcess));
+            return NtTerminateProcess( hProcess,  uExitCode);
+        }
+
+        public static uint NetrServerReqChallenge(IntPtr pMIDL_STUB_DESC, IntPtr formatString, IntPtr PrimaryName, IntPtr ComputerName, IntPtr ClientChallenge, out NETLOGON_CREDENTIAL ServerChallenge)
+        {
+            IntPtr proc = GetProcAddress(GetRpcrt4(), "NdrClientCall2");
+
+            SysCall.Delegates.NetrServerReqChallenge NetrServerReqChallenge = (SysCall.Delegates.NetrServerReqChallenge)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.NetrServerReqChallenge));
+            return NetrServerReqChallenge(pMIDL_STUB_DESC, formatString, PrimaryName,  ComputerName,  ClientChallenge, out  ServerChallenge);
+        }
+
+        public static uint NetrServerAuthenticate3(IntPtr pMIDL_STUB_DESC, IntPtr formatString, IntPtr PrimaryName, IntPtr AccountName, NETLOGON_SECURE_CHANNEL_TYPE SecoureChannelType, IntPtr ComputerName, IntPtr ClientChallenge, out NETLOGON_CREDENTIAL ServerChallenge, out uint NegotiateFlags, out uint AccountRid)
+        {
+
+            IntPtr proc = GetProcAddress(GetRpcrt4(), "NdrClientCall2");
+
+            SysCall.Delegates.NetrServerAuthenticate3 NetrServerAuthenticate3 = (SysCall.Delegates.NetrServerAuthenticate3)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.NetrServerAuthenticate3));
+            return NetrServerAuthenticate3(pMIDL_STUB_DESC, formatString, PrimaryName,  AccountName,  SecoureChannelType,  ComputerName,  ClientChallenge, out  ServerChallenge, out  NegotiateFlags, out  AccountRid);
+        }
+
+        public static uint NetServerPasswordSet2(IntPtr pMIDL_STUB_DESC, IntPtr formatString, IntPtr PrimaryName, IntPtr AccountName, NETLOGON_SECURE_CHANNEL_TYPE AccountType, IntPtr ComputerName, IntPtr Authenticator, IntPtr ReturnAuthenticator, IntPtr ClearNewPassword)
+        {
+
+            IntPtr proc = GetProcAddress(GetRpcrt4(), "NdrClientCall2");
+
+            SysCall.Delegates.NetServerPasswordSet2 NetServerPasswordSet2 = (SysCall.Delegates.NetServerPasswordSet2)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.NetServerPasswordSet2));
+            return NetServerPasswordSet2(pMIDL_STUB_DESC, formatString, PrimaryName,  AccountName,  AccountType,  ComputerName,  Authenticator,  ReturnAuthenticator,  ClearNewPassword);
+        }
+
+        public static bool LogonUser(string pszUserName, string pszDomain, string pszPassword, int dwLogonType, int dwLogonProvider, ref IntPtr phToken)
+        {
+            IntPtr proc = GetProcAddress(GetAdvapi32(), "LogonUserA");
+            SysCall.Delegates.LogonUser LogonUser = (SysCall.Delegates.LogonUser)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.LogonUser));
+            return LogonUser( pszUserName,  pszDomain,  pszPassword,  dwLogonType,  dwLogonProvider, ref  phToken);
+        }
+
+        public static bool RevertToSelf()
+        {
+            IntPtr proc = GetProcAddress(GetAdvapi32(), "RevertToSelf");
+            SysCall.Delegates.RevertToSelf RevertToSelf = (SysCall.Delegates.RevertToSelf)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.RevertToSelf));
+            return RevertToSelf();
+        }
+
+        public static bool ImpersonateLoggedOnUser(IntPtr hToken)
+        {
+            IntPtr proc = GetProcAddress(GetAdvapi32(), "ImpersonateLoggedOnUser");
+            SysCall.Delegates.ImpersonateLoggedOnUser ImpersonateLoggedOnUser = (SysCall.Delegates.ImpersonateLoggedOnUser)Marshal.GetDelegateForFunctionPointer(proc, typeof(SysCall.Delegates.ImpersonateLoggedOnUser));
+            return ImpersonateLoggedOnUser(hToken);
+        }
+
     }
 }
